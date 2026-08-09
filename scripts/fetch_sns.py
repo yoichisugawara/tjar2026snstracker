@@ -59,28 +59,29 @@ def fetch_rss_feed(feed_url):
     return None
 
 def fetch_latest_post(x_username, insta_username):
-    # 1. Instagram の取得試行
-    if insta_username:
-        insta_urls = [
-            f"https://rsshub.app/instagram/user/{insta_username}",
-            f"https://rsshub.rss3.io/instagram/user/{insta_username}"
-        ]
-        for url in insta_urls:
-            post = fetch_rss_feed(url)
-            if post:
-                return post, "Instagram"
-
-    # 2. X (Twitter) の取得試行
+    # 1. X (Twitter) の取得試行（稼働中のNitterインスタンスを巡回）
     if x_username:
         x_rss_urls = [
-            f"https://rsshub.app/twitter/user/{x_username}",
-            f"https://nitter.privacydev.net/{x_username}/rss",
-            f"https://nitter.poast.org/{x_username}/rss"
+            f"https://nitter.poast.org/{x_username}/rss",
+            f"https://nitter.cz/{x_username}/rss",
+            f"https://nitter.net/{x_username}/rss",
+            f"https://rsshub.app/twitter/user/{x_username}"
         ]
         for url in x_rss_urls:
             post = fetch_rss_feed(url)
             if post:
                 return post, "X (Twitter)"
+
+    # 2. Instagram の取得試行
+    if insta_username:
+        insta_urls = [
+            f"https://rsshub.app/instagram/user/{insta_username}",
+            f"https://rsshub.moe/instagram/user/{insta_username}"
+        ]
+        for url in insta_urls:
+            post = fetch_rss_feed(url)
+            if post:
+                return post, "Instagram"
 
     return None, ""
 
@@ -120,7 +121,7 @@ def main():
             print(f"Processing No.{bib} {name}...")
             post_data, platform = fetch_latest_post(x_user, insta_user)
 
-            # もし今回取得失敗し、過去に正常な投稿データがあった場合はそれを維持する
+            # 今回取得失敗し、過去に正常な投稿データがあった場合はそれを維持
             old_item = existing_data.get(bib, {})
             if not post_data and old_item.get("latest_post"):
                 post_data = old_item["latest_post"]
