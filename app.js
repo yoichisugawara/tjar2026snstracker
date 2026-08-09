@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    // 最新投稿順にソート（投稿がない選手は下へ）
     data.sort((a, b) => {
       const timeA = a.latest_post && a.latest_post.pub_date ? new Date(a.latest_post.pub_date).getTime() : 0;
       const timeB = b.latest_post && b.latest_post.pub_date ? new Date(b.latest_post.pub_date).getTime() : 0;
@@ -44,7 +43,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       `;
       card.appendChild(headerDiv);
 
-      // 2. 投稿本文部分
+      // 2. IBUKI 現在地ステータス表示（データがある場合）
+      if (item.ibuki_status) {
+        const ibukiDiv = document.createElement('div');
+        ibukiDiv.style.cssText = 'background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; border-radius:8px; padding:8px 12px; margin-bottom:12px; font-size:0.85rem; font-weight:600; display:flex; align-items:center; gap:6px;';
+        ibukiDiv.innerHTML = `<span>📍 IBUKI:</span> <span>${item.ibuki_status}</span>`;
+        card.appendChild(ibukiDiv);
+      }
+
+      // 3. SNS投稿本文部分
       const postDiv = document.createElement('div');
       postDiv.style.cssText = 'background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:12px;';
 
@@ -65,7 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       card.appendChild(postDiv);
 
-      // 3. ボタン部分
+      // 4. ボタン部分
       const btnDiv = document.createElement('div');
       btnDiv.style.cssText = 'display:flex; gap:8px;';
 
@@ -80,7 +87,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       
       card.appendChild(btnDiv);
-
       container.appendChild(card);
     });
   } catch (err) {
