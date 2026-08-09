@@ -1,0 +1,11 @@
+{
+  "name": "TJAR SNS Tracker",
+  "short_name": "TJAR SNS",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#111827",
+  "icons": [
+    { "src": "https://via.placeholder.com/192/f97316/ffffff?text=TJAR", "sizes": "192x192", "type": "image/png" }
+  ]
+}
