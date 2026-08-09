@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TJARをネットデータで楽しむおすすめツール集</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      margin: 0;
+      padding: 16px;
+      line-height: 1.6;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .back-btn {
+      text-decoration: none;
+      color: #2563eb;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+    h1 {
+      font-size: 1.25rem;
+      margin: 0 0 8px 0;
+    }
+    .subtitle {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .step-number {
+      display: inline-block;
+      background: #2563eb;
+      color: white;
+      font-size: 0.75rem;
+      font-weight: bold;
+      padding: 2px 8px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+    }
+    .card-title {
+      font-weight: bold;
+      font-size: 1rem;
+      margin-bottom: 6px;
+    }
+    .card-desc {
+      font-size: 0.85rem;
+      color: #475569;
+      margin-bottom: 12px;
+    }
+    .tool-link {
+      display: inline-block;
+      width: 100%;
+      text-align: center;
+      padding: 10px 0;
+      background: #f1f5f9;
+      color: #2563eb;
+      font-weight: bold;
+      font-size: 0.85rem;
+      border-radius: 8px;
+      text-decoration: none;
+      box-sizing: border-box;
+    }
+    .tool-link:hover {
+      background: #e2e8f0;
+    }
+    .note {
+      font-size: 0.8rem;
+      color: #64748b;
+      background: #e2e8f0;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <a href="index.html" class="back-btn">← メイン画面に戻る</a>
+  </div>
+
+  <h1>公式GPS追跡と併せておすすめ！<br>TJARをネットデータで楽しむ方法</h1>
+  <div class="subtitle">※自転車の長距離サイクリングイベント「ブルベ」のツールを借用・応用した楽しみ方です。</div>
+
+  <!-- Step 1 -->
+  <div class="card">
+    <span class="step-number">STEP 1</span>
+    <div class="card-title">GPX データを取得</div>
+    <div class="card-desc">まずはヤマレコからTJARルートのGPXデータをダウンロードします。</div>
+    <a href="https://www.yamareco.com/modules/yamainfo/rtinfo.php?rtid=8819" target="_blank" rel="noopener" class="tool-link">ヤマレコでGPXを取得 ↗</a>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="card">
+    <span class="step-number">STEP 2</span>
+    <div class="card-title">ルート上の天気を確認（MONI WIND）</div>
+    <div class="card-desc">
+      MONI WINDにGPXデータを読み込ませます。<br>
+      ・出発時刻：<b>8/9 00:00</b> に設定<br>
+      ・制限時間一杯の場合：<b>時速2.2km</b> に設定
+    </div>
+    <a href="https://www.cannonball.jp/moniwind.html" target="_blank" rel="noopener" class="tool-link">MONI WIND を開く ↗</a>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="card">
+    <span class="step-number">STEP 3</span>
+    <div class="card-title">ルート上のコンビニ検索（330k info）</div>
+    <div class="card-desc">330k infoにGPXデータを読み込ませてコース沿いの補給ポイントを確認（コンビニの少なさを実感できます）。</div>
+    <a href="https://www.330k.info/software/gpx-nearby-search/" target="_blank" rel="noopener" class="tool-link">330k info を開く ↗</a>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="card">
+    <span class="step-number">STEP 4</span>
+    <div class="card-title">ルート上の景色と高低差グラフ（BRMTOOL）</div>
+    <div class="card-desc">
+      BRMTOOLにGPXデータを読み込みます。<br>
+      「GPXファイルからブルベを新規作成します」を選び、<b>距離は400km</b>に設定するとストリートビューや高低差が確認できます。
+    </div>
+    <a href="https://brmtool.kantaro.org/" target="_blank" rel="noopener" class="tool-link">BRMTOOL を開く ↗</a>
+  </div>
+
+  <div class="note">
+    💡 このページのアドレス（URL）をSNS等でシェアすることで、YouTubeなどでリンクが貼れない場合でも簡単に外部ツールを紹介できます。
+  </div>
+
+</body>
+</html>
