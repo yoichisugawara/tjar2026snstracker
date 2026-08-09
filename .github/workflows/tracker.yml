@@ -1,0 +1,34 @@
+name: TJAR SNS Tracker Auto Fetch
+
+on:
+  schedule:
+    # 30分ごとに自動実行 (UTC時間)
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # 手動実行ボタンも有効化
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Create data directory
+      run: mkdir -p data
+
+    - name: Run SNS Fetch Script
+      run: python scripts/fetch_sns.py
+
+    - name: Commit and Push updated feed.json
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git add data/feed.json
+        git commit -m "Auto-update SNS feed data" || exit 0
+        git push
