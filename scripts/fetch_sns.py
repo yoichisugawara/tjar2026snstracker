@@ -16,7 +16,7 @@ def clean_text(html_text):
     return text
 
 def fetch_ibuki_status(ibuki_url):
-    """IBUKIのページから現在地・最新ポイントのテキストのみを抽出"""
+    """IBUKIのページ内埋め込みデータ(JSON)から最新ログ・現在地を抽出"""
     if not ibuki_url:
         return None
     headers = {
@@ -27,20 +27,33 @@ def fetch_ibuki_status(ibuki_url):
         if resp.status_code == 200:
             soup = bs4.BeautifulSoup(resp.content, "html.parser")
             
-            # 特定のステータス表示用クラスや要素を探す（IBUKIの現在地要素）
-            status_elem = soup.find(class_=re.compile(r'(status|checkpoint|location|point|latest-log)', re.I))
-            if status_elem:
-                text = status_elem.get_text(strip=True)
-                if text and len(text) < 100:  # 全文取得を防止するため長さを制限
-                    return text
+            # 1. Next.js などの埋め込みJSONデータ script(__NEXT_DATA__)を解析
+            next_data = soup.find('script', id='__NEXT_DATA__')
+            if next_data and next_data.string:
+                try:
+                    data = json.loads(next_data.string)
+                    # JSON構造からチェックポイントや最新ログの検索
+                    page_props = data.get('props', {}).get('pageProps', {})
+                    # プレイヤー・トラッカー情報
+                    runner = page_props.get('runner', {}) or page_props.get('track', {})
+                    if runner:
+                        last_point = runner.get('lastCheckpointName') or runner.get('currentLocationName')
+                        last_time = runner.get('lastPassedTime') or runner.get('updatedAt')
+                        if last_point:
+                            return f"{last_point}" + (f" ({last_time})" if last_time else "")
+                except Exception as je:
+                    print(f"JSON parse error for IBUKI: {je}")
 
-            # テーブルやリスト等のテキストから「通過」「現在地」「地点」等のキーワードを含む箇所の短文を検索
-            for tag in soup.find_all(['div', 'span', 'td', 'p']):
-                t = tag.get_text(strip=True)
-                if any(k in t for k in ['通過', '現在地', '地点', '通過時間', 'チェックポイント']) and 5 <= len(t) <= 80:
-                    # 全体説明文などの長い文章を除外して最新状態のみを取得
-                    if "IBUKI" not in t and "GPS" not in t and "トラッキング" not in t:
-                        return t
+            # 2. JSON解析が外れた場合のバックアップ処理（特定メタデータ・タグ検索）
+            og_title = soup.find("meta", property="og:title")
+            if og_title and og_title.get("content"):
+                title_content = og_title["content"].strip()
+                # タイトルに含まれる「〇〇 - IBUKI」などの形式から抽出
+                if " - " in title_content:
+                    parts = title_content.split(" - ")
+                    if len(parts) > 1 and "IBUKI" not in parts[0]:
+                        return parts[0].strip()
+
     except Exception as e:
         print(f"IBUKI fetch failed for {ibuki_url}: {e}")
     return None
