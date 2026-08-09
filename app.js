@@ -3,13 +3,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const lastUpdateElem = document.getElementById('last-update');
 
   try {
-    // キャッシュ回避のためタイムスタンプを付与
     const res = await fetch(`./data/feed.json?t=${Date.now()}`);
     if (!res.ok) throw new Error(`HTTPエラー: ${res.status}`);
     const data = await res.json();
 
     if (!data || data.length === 0) {
-      container.innerHTML = 'データが空です。';
+      container.innerHTML = '<p style="text-align:center; padding:20px;">データが空です。</p>';
       return;
     }
 
@@ -28,58 +27,63 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     data.forEach(item => {
       const card = document.createElement('div');
-      card.style.cssText = 'background:#ffffff; border-radius:12px; padding:16px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.08);';
+      card.style.cssText = 'background:#ffffff; border-radius:12px; padding:16px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.08); display:block;';
 
-      // 投稿エリアの生成
-      let postHtml = '直近の投稿データがありません';
-      
-      if (item.latest_post) {
-        const timeStr = item.latest_post.pub_date ? new Date(item.latest_post.pub_date).toLocaleString('ja-JP') : '日時不明';
-        const imgHtml = item.latest_post.media_url ? `` : '';
-        
-        postHtml = `
-          
-            
-              ⏱ ${timeStr}
-              via ${item.platform || 'SNS'}
-            
-            ${item.latest_post.text || '（画像または動画のみの投稿）'}
-            ${imgHtml}
-          
-        `;
-      }
-
-      // ボタン群の生成
-      let btnHtml = '';
-      if (item.x_username) {
-        btnHtml += `Xを見る`;
-      }
-      if (item.instagram_username) {
-        btnHtml += `Instaを見る`;
-      }
-      if (item.ibuki_url) {
-        btnHtml += `IBUKI GPS`;
-      }
-      btnHtml += '';
-
+      // 1. プロフィールヘッダー部分
       const avatar = item.avatar_url || 'https://via.placeholder.com/100?text=No+Img';
       const ageText = item.age ? ` (${item.age}歳)` : '';
-
-      card.innerHTML = `
-        
-          
-          
-            No.${item.bib} ${item.name}${ageText}
-            ${item.info || ''}
-          
-        
-        ${postHtml}
-        ${btnHtml}
+      
+      const headerDiv = document.createElement('div');
+      headerDiv.style.cssText = 'display:flex; align-items:center; gap:12px; margin-bottom:12px;';
+      headerDiv.innerHTML = `
+        <img src="${avatar}" style="width:50px; height:50px; border-radius:50%; object-fit:cover; background:#e2e8f0; flex-shrink:0;">
+        <div>
+          <div style="font-weight:bold; font-size:1.05rem; color:#0f172a;">No.${item.bib} ${item.name}${ageText}</div>
+          <div style="font-size:0.8rem; color:#64748b; margin-top:2px;">${item.info || ''}</div>
+        </div>
       `;
+      card.appendChild(headerDiv);
+
+      // 2. 投稿本文部分
+      const postDiv = document.createElement('div');
+      postDiv.style.cssText = 'background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:12px;';
+
+      if (item.latest_post) {
+        const timeStr = item.latest_post.pub_date ? new Date(item.latest_post.pub_date).toLocaleString('ja-JP') : '日時不明';
+        const imgHtml = item.latest_post.media_url ? `<img src="${item.latest_post.media_url}" style="width:100%; max-height:300px; object-fit:cover; border-radius:6px; margin-top:8px; display:block;" loading="lazy">` : '';
+
+        postDiv.innerHTML = `
+          <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#64748b; margin-bottom:6px;">
+            <span>⏱ ${timeStr}</span>
+            <span>via ${item.platform || 'SNS'}</span>
+          </div>
+          <div style="font-size:0.9rem; line-height:1.5; color:#334155; white-space:pre-wrap; word-break:break-word;">${item.latest_post.text || '（画像または動画のみの投稿）'}</div>
+          ${imgHtml}
+        `;
+      } else {
+        postDiv.innerHTML = `<div style="color:#64748b; font-size:0.85rem; text-align:center;">直近の投稿データがありません</div>`;
+      }
+      card.appendChild(postDiv);
+
+      // 3. ボタン部分
+      const btnDiv = document.createElement('div');
+      btnDiv.style.cssText = 'display:flex; gap:8px;';
+
+      if (item.x_username) {
+        btnDiv.innerHTML += `<a href="https://x.com/${item.x_username}" target="_blank" rel="noopener" style="flex:1; text-align:center; padding:10px 0; background:#000000; color:#ffffff; text-decoration:none; font-size:0.85rem; font-weight:bold; border-radius:6px; display:block;">Xを見る</a>`;
+      }
+      if (item.instagram_username) {
+        btnDiv.innerHTML += `<a href="https://instagram.com/${item.instagram_username}" target="_blank" rel="noopener" style="flex:1; text-align:center; padding:10px 0; background:#e1306c; color:#ffffff; text-decoration:none; font-size:0.85rem; font-weight:bold; border-radius:6px; display:block;">Instaを見る</a>`;
+      }
+      if (item.ibuki_url) {
+        btnDiv.innerHTML += `<a href="${item.ibuki_url}" target="_blank" rel="noopener" style="flex:1; text-align:center; padding:10px 0; background:#16a34a; color:#ffffff; text-decoration:none; font-size:0.85rem; font-weight:bold; border-radius:6px; display:block;">IBUKI GPS</a>`;
+      }
+      
+      card.appendChild(btnDiv);
 
       container.appendChild(card);
     });
   } catch (err) {
-    container.innerHTML = `読み込みエラー: ${err.message}`;
+    container.innerHTML = `<p style="color:#ef4444; text-align:center; padding:20px;">読み込みエラー: ${err.message}</p>`;
   }
 });
