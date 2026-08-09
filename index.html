@@ -38,9 +38,18 @@
       color: #94a3b8;
       margin-top: 4px;
     }
+    .notice {
+      font-size: 0.7rem;
+      color: #64748b;
+      text-align: center;
+      margin: 12px auto 4px auto;
+      max-width: 580px;
+      padding: 0 12px;
+      line-height: 1.4;
+    }
     #card-container {
       max-width: 600px;
-      margin: 16px auto;
+      margin: 8px auto;
       padding: 0 12px;
     }
   </style>
@@ -50,6 +59,8 @@
     <h1>TJAR 2026 SNS Tracker</h1>
     <div id="last-update">データ読み込み中...</div>
   </header>
+
+  <p class="notice">※Instagram側で自動取得が制限されている場合は「直近の投稿データがありません」と表示されますが、各カード下の「Instaを見る」ボタンから直接本人のアカウントへ移動できます。</p>
 
   <main id="card-container">
     <!-- app.js からカードが挿入されます -->
