@@ -12,15 +12,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    // 最新投稿順にソート
+    // 最新投稿順（投稿がない場合はゼッケン順）にソート
     data.sort((a, b) => {
       const timeA = a.latest_post && a.latest_post.pub_date ? new Date(a.latest_post.pub_date).getTime() : 0;
       const timeB = b.latest_post && b.latest_post.pub_date ? new Date(b.latest_post.pub_date).getTime() : 0;
+      if (timeA === timeB) {
+        return parseInt(a.bib) - parseInt(b.bib);
+      }
       return timeB - timeA;
     });
 
     if (lastUpdateElem) {
-      lastUpdateElem.textContent = `最終同期: ${new Date().toLocaleTimeString('ja-JP')} (最新投稿順)`;
+      lastUpdateElem.textContent = `最終同期: ${new Date().toLocaleTimeString('ja-JP')}`;
     }
 
     container.innerHTML = '';
@@ -52,35 +55,40 @@ document.addEventListener('DOMContentLoaded', async () => {
         card.appendChild(ibukiDiv);
       }
 
-      // 3. SNS投稿本文部分（更新日時の整形表示）
+      // 3. SNS投稿本文部分
       const postDiv = document.createElement('div');
       postDiv.style.cssText = 'background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:12px;';
 
-      let formattedDate = '日時不明';
-      if (item.latest_post && item.latest_post.pub_date) {
-        const d = new Date(item.latest_post.pub_date);
-        if (!isNaN(d.getTime())) {
-          const month = d.getMonth() + 1;
-          const date = d.getDate();
-          const hours = String(d.getHours()).padStart(2, '0');
-          const minutes = String(d.getMinutes()).padStart(2, '0');
-          formattedDate = `${month}/${date} ${hours}:${minutes}`;
-        }
-      }
-
       if (item.latest_post) {
+        let formattedDate = '日時不明';
+        if (item.latest_post.pub_date) {
+          const d = new Date(item.latest_post.pub_date);
+          if (!isNaN(d.getTime())) {
+            const month = d.getMonth() + 1;
+            const date = d.getDate();
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            formattedDate = `${month}/${date} ${hours}:${minutes}`;
+          }
+        }
+
         const imgHtml = item.latest_post.media_url ? `<img src="${item.latest_post.media_url}" style="width:100%; max-height:300px; object-fit:cover; border-radius:6px; margin-top:8px; display:block;" loading="lazy">` : '';
 
         postDiv.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#64748b; margin-bottom:6px;">
-            <span style="font-weight:600; color:#0f172a;">⏱ 最新更新: ${formattedDate}</span>
+            <span style="font-weight:600; color:#0f172a;">⏱ ${formattedDate}</span>
             <span style="background:#e2e8f0; padding:2px 6px; border-radius:4px;">via ${item.platform || 'SNS'}</span>
           </div>
           <div style="font-size:0.9rem; line-height:1.5; color:#334155; white-space:pre-wrap; word-break:break-word;">${item.latest_post.text || '（画像または動画のみの投稿）'}</div>
           ${imgHtml}
         `;
       } else {
-        postDiv.innerHTML = `<div style="color:#64748b; font-size:0.85rem; text-align:center;">直近の投稿データがありません</div>`;
+        // データが取得できていない場合の表示
+        postDiv.innerHTML = `
+          <div style="color:#64748b; font-size:0.85rem; text-align:center; padding:4px 0;">
+            最新投稿データ未取得（下のボタンから直接確認）
+          </div>
+        `;
       }
       card.appendChild(postDiv);
 
@@ -92,9 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         btnDiv.innerHTML += `<a href="https://x.com/${item.x_username}" target="_blank" rel="noopener" style="flex:1; text-align:center; padding:10px 0; background:#000000; color:#ffffff; text-decoration:none; font-size:0.85rem; font-weight:bold; border-radius:6px; display:block;">Xを見る</a>`;
       }
       if (item.instagram_username) {
-        // Instagramの最終更新ラベル付きボタン
-        const instaLabel = (item.platform && item.platform.toLowerCase().includes('instagram')) ? `Instaを見る (${formattedDate})` : 'Instaを見る';
-        btnDiv.innerHTML += `<a href="https://instagram.com/${item.instagram_username}" target="_blank" rel="noopener" style="flex:1; text-align:center; padding:10px 0; background:#e1306c; color:#ffffff; text-decoration:none; font-size:0.85rem; font-weight:bold; border-radius:6px; display:block;">${instaLabel}</a>`;
+        btnDiv.innerHTML += `<a href="https://instagram.com/${item.instagram_username}" target="_blank" rel="noopener" style="flex:1; text-align:center; padding:10px 0; background:#e1306c; color:#ffffff; text-decoration:none; font-size:0.85rem; font-weight:bold; border-radius:6px; display:block;">Instaを見る</a>`;
       }
       if (item.ibuki_url) {
         btnDiv.innerHTML += `<a href="${item.ibuki_url}" target="_blank" rel="noopener" style="flex:1; text-align:center; padding:10px 0; background:#16a34a; color:#ffffff; text-decoration:none; font-size:0.85rem; font-weight:bold; border-radius:6px; display:block;">IBUKI GPS</a>`;
