@@ -16,7 +16,7 @@ def clean_text(html_text):
     return text
 
 def fetch_ibuki_status(ibuki_url):
-    """IBUKIの公開ページから最新の現在地・ステータス文字列を取得"""
+    """IBUKIのページから現在地・最新ポイントのテキストのみを抽出"""
     if not ibuki_url:
         return None
     headers = {
@@ -27,19 +27,20 @@ def fetch_ibuki_status(ibuki_url):
         if resp.status_code == 200:
             soup = bs4.BeautifulSoup(resp.content, "html.parser")
             
-            # IBUKIページのメタ情報や特定要素から最新ログ・チェックポイントを取得
-            # ページタイトルやog:description等に含まれるテキストを抽出
-            meta_desc = soup.find("meta", property="og:description")
-            if meta_desc and meta_desc.get("content"):
-                desc_text = meta_desc["content"].strip()
-                if desc_text:
-                    return desc_text
-            
-            # タイトルからの抽出フォールバック
-            title_tag = soup.find("title")
-            if title_tag:
-                title_text = title_tag.get_text().strip()
-                return title_text
+            # 特定のステータス表示用クラスや要素を探す（IBUKIの現在地要素）
+            status_elem = soup.find(class_=re.compile(r'(status|checkpoint|location|point|latest-log)', re.I))
+            if status_elem:
+                text = status_elem.get_text(strip=True)
+                if text and len(text) < 100:  # 全文取得を防止するため長さを制限
+                    return text
+
+            # テーブルやリスト等のテキストから「通過」「現在地」「地点」等のキーワードを含む箇所の短文を検索
+            for tag in soup.find_all(['div', 'span', 'td', 'p']):
+                t = tag.get_text(strip=True)
+                if any(k in t for k in ['通過', '現在地', '地点', '通過時間', 'チェックポイント']) and 5 <= len(t) <= 80:
+                    # 全体説明文などの長い文章を除外して最新状態のみを取得
+                    if "IBUKI" not in t and "GPS" not in t and "トラッキング" not in t:
+                        return t
     except Exception as e:
         print(f"IBUKI fetch failed for {ibuki_url}: {e}")
     return None
