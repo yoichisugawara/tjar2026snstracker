@@ -15,6 +15,35 @@ def clean_text(html_text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
+def fetch_ibuki_status(ibuki_url):
+    """IBUKIの公開ページから最新の現在地・ステータス文字列を取得"""
+    if not ibuki_url:
+        return None
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+    }
+    try:
+        resp = requests.get(ibuki_url, headers=headers, timeout=8)
+        if resp.status_code == 200:
+            soup = bs4.BeautifulSoup(resp.content, "html.parser")
+            
+            # IBUKIページのメタ情報や特定要素から最新ログ・チェックポイントを取得
+            # ページタイトルやog:description等に含まれるテキストを抽出
+            meta_desc = soup.find("meta", property="og:description")
+            if meta_desc and meta_desc.get("content"):
+                desc_text = meta_desc["content"].strip()
+                if desc_text:
+                    return desc_text
+            
+            # タイトルからの抽出フォールバック
+            title_tag = soup.find("title")
+            if title_tag:
+                title_text = title_tag.get_text().strip()
+                return title_text
+    except Exception as e:
+        print(f"IBUKI fetch failed for {ibuki_url}: {e}")
+    return None
+
 def fetch_rss_feed(feed_url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
@@ -59,7 +88,6 @@ def fetch_rss_feed(feed_url):
     return None
 
 def fetch_latest_post(x_username, insta_username):
-    # 1. X (Twitter) の取得試行
     if x_username:
         x_rss_urls = [
             f"https://nitter.poast.org/{x_username}/rss",
@@ -72,7 +100,6 @@ def fetch_latest_post(x_username, insta_username):
             if post:
                 return post, "X (Twitter)"
 
-    # 2. Instagram の取得試行（複数の代替プロキシを巡回）
     if insta_username:
         insta_urls = [
             f"https://rsshub.app/instagram/user/{insta_username}",
@@ -95,7 +122,6 @@ def main():
         print("participants.csv not found.")
         return
 
-    # 既存の feed.json があればバックアップとして保持
     existing_data = {}
     if os.path.exists(output_path):
         try:
@@ -122,8 +148,8 @@ def main():
 
             print(f"Processing No.{bib} {name}...")
             post_data, platform = fetch_latest_post(x_user, insta_user)
+            ibuki_status = fetch_ibuki_status(ibuki_url)
 
-            # 今回取得失敗し、過去データがある場合は維持
             old_item = existing_data.get(bib, {})
             if not post_data and old_item.get("latest_post"):
                 post_data = old_item["latest_post"]
@@ -138,6 +164,7 @@ def main():
                 "x_username": x_user,
                 "instagram_username": insta_user,
                 "ibuki_url": ibuki_url,
+                "ibuki_status": ibuki_status,
                 "platform": platform,
                 "latest_post": post_data,
                 "updated_at": post_data["pub_date"] if post_data else "1970-01-01T00:00:00Z"
