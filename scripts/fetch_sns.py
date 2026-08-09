@@ -1,120 +1,135 @@
 import csv
 import json
+import os
 import re
-import urllib.request
-import xml.etree.ElementTree as ET
+import urllib.parse
 from datetime import datetime
+import bs4
+import feedparser
+import requests
 
-# 利用する RSS-Bridge の公開インスタンスリスト（自動切り替え用）
-RSS_BRIDGES = [
-    "https://rss-bridge.org/bridge01",
-    "https://rssbridge.pw",
-    "https://bridge.site" # 動作状況に応じて自動フォールバック
-]
+def clean_text(html_text):
+    if not html_text:
+        return ""
+    soup = bs4.BeautifulSoup(html_text, "html.parser")
+    text = soup.get_text(separator=" ")
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
 
-def fetch_rss(url):
-    req = urllib.request.Request(
-        url, 
-        headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-    )
+def fetch_rss_feed(feed_url):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
     try:
-        with urllib.request.urlopen(req, timeout=10) as response:
-            return response.read()
-    except Exception as e:
-        print(f"Error fetching {url}: {e}")
-        return None
+        resp = requests.get(feed_url, headers=headers, timeout=10)
+        if resp.status_code == 200:
+            feed = feedparser.parse(resp.content)
+            if feed.entries:
+                entry = feed.entries[0]
+                
+                # 日時のパース
+                pub_date = None
+                if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                    pub_date = datetime(*entry.published_parsed[:6]).isoformat() + "Z"
+                elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
+                    pub_date = datetime(*entry.updated_parsed[:6]).isoformat() + "Z"
+                else:
+                    pub_date = datetime.utcnow().isoformat() + "Z"
+                
+                # 本文抽出
+                raw_text = getattr(entry, 'summary', '') or getattr(entry, 'description', '')
+                text = clean_text(raw_text)
+                
+                # 画像メディアURL抽出
+                media_url = None
+                if 'media_content' in entry and len(entry.media_content) > 0:
+                    media_url = entry.media_content[0].get('url')
+                elif 'media_thumbnail' in entry and len(entry.media_thumbnail) > 0:
+                    media_url = entry.media_thumbnail[0].get('url')
+                else:
+                    # 本文タグ内のimgタグを検索
+                    soup = bs4.BeautifulSoup(raw_text, "html.parser")
+                    img = soup.find('img')
+                    if img and img.get('src'):
+                        media_url = img.get('src')
 
-def parse_rss_item(xml_data):
-    if not xml_data:
-        return None
-    try:
-        root = ET.fromstring(xml_data)
-        item = root.find('.//item')
-        if item is None:
-            return None
-            
-        title = item.findtext('title') or ""
-        description = item.findtext('description') or ""
-        pub_date = item.findtext('pubDate') or ""
-        link = item.findtext('link') or ""
-        
-        # HTMLタグを除去してプレーンテキスト化
-        clean_text = re.sub('<[^<]+?>', '', description if description else title).strip()
-        
-        # 画像URLの抽出 (<img> タグがある場合)
-        img_match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', description)
-        media_url = img_match.group(1) if img_match else ""
-        
-        return {
-            "pub_date": pub_date,
-            "text": clean_text[:200],  # 冒頭200文字
-            "media_url": media_url,
-            "link": link
-        }
+                return {
+                    "text": text[:300] + ("..." if len(text) > 300 else ""),
+                    "pub_date": pub_date,
+                    "media_url": media_url,
+                    "link": getattr(entry, 'link', '')
+                }
     except Exception as e:
-        print(f"XML parse error: {e}")
-        return None
+        print(f"Error fetching {feed_url}: {e}")
+    return None
+
+def fetch_latest_post(x_username, insta_username):
+    # 1. Instagram の取得試行 (RSSHub プロキシ経由)
+    if insta_username:
+        insta_url = f"https://rsshub.app/instagram/user/{insta_username}"
+        post = fetch_rss_feed(insta_url)
+        if post:
+            return post, "Instagram"
+
+    # 2. X (Twitter) の取得試行 (Nitter / RSSHub 経由)
+    if x_username:
+        x_rss_urls = [
+            f"https://rsshub.app/twitter/user/{x_username}",
+            f"https://nitter.net/{x_username}/rss",
+            f"https://nitter.privacydev.net/{x_username}/rss"
+        ]
+        for url in x_rss_urls:
+            post = fetch_rss_feed(url)
+            if post:
+                return post, "X (Twitter)"
+
+    return None, ""
 
 def main():
-    participants = []
+    csv_path = "participants.csv"
+    output_path = "data/feed.json"
     
-    # CSVファイルの読み込み
-    with open('participants.csv', mode='r', encoding='utf-8-sig') as f:
+    if not os.path.exists(csv_path):
+        print("participants.csv not found.")
+        return
+
+    results = []
+
+    with open(csv_path, mode='r', encoding='utf-8-sig') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            participants.append(row)
-            
-    feed_data = []
+            bib = row.get("bib", "").strip()
+            name = row.get("name", "").strip()
+            age = row.get("age", "").strip()
+            avatar_url = row.get("avatar_url", "").strip()
+            info = row.get("info", "").strip()
+            x_user = row.get("x_username", "").strip()
+            insta_user = row.get("instagram_username", "").strip()
+            ibuki_url = row.get("ibuki_url", "").strip()
 
-    for p in participants:
-        latest_post = None
-        platform_used = ""
-        
-        # Instagramの巡回チェック
-        if p.get('instagram_username'):
-            insta_user = p['instagram_username'].strip()
-            for bridge in RSS_BRIDGES:
-                rss_url = f"{bridge}/?action=display&bridge=InstagramBridge&context=Username&u={insta_user}&format=Atom"
-                xml_data = fetch_rss(rss_url)
-                post = parse_rss_item(xml_data)
-                if post:
-                    latest_post = post
-                    platform_used = "Instagram"
-                    break
+            print(f"Processing No.{bib} {name}...")
+            post_data, platform = fetch_latest_post(x_user, insta_user)
 
-        # X (Twitter) の巡回チェック（Instagramが無かった、または失敗した場合）
-        if not latest_post and p.get('x_username'):
-            x_user = p['x_username'].strip()
-            for bridge in RSS_BRIDGES:
-                rss_url = f"{bridge}/?action=display&bridge=NitterBridge&name={x_user}&format=Atom"
-                xml_data = fetch_rss(rss_url)
-                post = parse_rss_item(xml_data)
-                if post:
-                    latest_post = post
-                    platform_used = "X"
-                    break
+            item = {
+                "bib": bib,
+                "name": name,
+                "age": age,
+                "avatar_url": avatar_url,
+                "info": info,
+                "x_username": x_user,
+                "instagram_username": insta_user,
+                "ibuki_url": ibuki_url,
+                "platform": platform,
+                "latest_post": post_data,
+                "updated_at": post_data["pub_date"] if post_data else "1970-01-01T00:00:00Z"
+            }
+            results.append(item)
 
-        # データ項目の結合
-        feed_data.append({
-            "bib": p.get('bib', ''),
-            "name": p.get('name', ''),
-            "age": p.get('age', ''),
-            "avatar_url": p.get('avatar_url', ''),
-            "info": p.get('info', ''),
-            "x_username": p.get('x_username', ''),
-            "instagram_username": p.get('instagram_username', ''),
-            "ibuki_url": p.get('ibuki_url', ''),
-            "platform": platform_used,
-            "latest_post": latest_post,
-            "updated_at": latest_post["pub_date"] if latest_post else "1970-01-01T00:00:00Z"
-        })
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(results, f, ensure_ascii=False, indent=2)
 
-    # 最新投稿日時が新しい順（降順）にソート
-    feed_data.sort(key=lambda x: x['updated_at'], reverse=True)
+    print("Successfully updated feed.json!")
 
-    # 判定結果を JSON に書き出し
-    with open('data/feed.json', 'w', encoding='utf-8') as f:
-        json.dump(feed_data, f, ensure_ascii=False, indent=2)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
