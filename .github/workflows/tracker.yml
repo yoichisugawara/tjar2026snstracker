@@ -2,36 +2,34 @@ name: TJAR SNS Tracker Auto Fetch
 
 on:
   schedule:
-    # 30分ごとに自動実行 (UTC時間)
-    - cron: '*/30 * * * *'
-  workflow_dispatch: # 手動実行ボタン
-
-permissions:
-  contents: write # フォルダ書き込み権限を明示的に付与
+    # 毎時 0, 15, 30, 45 分に実行 (UTC表記)
+    - cron: '0,15,30,45 * * * *'
+  workflow_dispatch: # 手動実行用ボタン
 
 jobs:
-  build:
+  build-and-fetch:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
+      - name: Set up Python
+        uses: actions/python-script@v4
+        with:
+          python-version: '3.10'
 
-    - name: Create data directory
-      run: mkdir -p data
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 feedparser
 
-    - name: Run SNS Fetch Script
-      run: python scripts/fetch_sns.py
+      - name: Run SNS fetch script
+        run: python scripts/fetch_sns.py
 
-    - name: Commit and Push updated feed.json
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add data/feed.json
-        git commit -m "Auto-update SNS feed data" || echo "No changes to commit"
-        git push
+      - name: Commit and push updated feed.json
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/feed.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update SNS feed" && git push)
