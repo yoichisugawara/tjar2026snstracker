@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const lastUpdateElem = document.getElementById('last-update');
 
   try {
+    // キャッシュ回避のためタイムスタンプを付与
     const res = await fetch(`./data/feed.json?t=${Date.now()}`);
     if (!res.ok) throw new Error(`HTTPエラー: ${res.status}`);
     const data = await res.json();
@@ -27,10 +28,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     data.forEach(item => {
       const card = document.createElement('div');
-      card.className = 'card';
-      card.style.cssText = 'background:#fff; border-radius:12px; padding:16px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.08);';
+      card.style.cssText = 'background:#ffffff; border-radius:12px; padding:16px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.08);';
 
-      // 投稿部分
+      // 投稿エリアの生成
       let postHtml = '直近の投稿データがありません';
       
       if (item.latest_post) {
@@ -49,13 +49,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
       }
 
-      // ボタン群
+      // ボタン群の生成
       let btnHtml = '';
       if (item.x_username) {
-        btnHtml += `X(Twitter)`;
+        btnHtml += `Xを見る`;
       }
       if (item.instagram_username) {
-        btnHtml += `Instagram`;
+        btnHtml += `Instaを見る`;
       }
       if (item.ibuki_url) {
         btnHtml += `IBUKI GPS`;
