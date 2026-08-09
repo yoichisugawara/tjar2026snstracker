@@ -2,7 +2,6 @@ import csv
 import json
 import os
 import re
-import urllib.parse
 from datetime import datetime
 import bs4
 import feedparser
@@ -21,13 +20,12 @@ def fetch_rss_feed(feed_url):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
     }
     try:
-        resp = requests.get(feed_url, headers=headers, timeout=10)
+        resp = requests.get(feed_url, headers=headers, timeout=8)
         if resp.status_code == 200:
             feed = feedparser.parse(resp.content)
             if feed.entries:
                 entry = feed.entries[0]
                 
-                # 日時のパース
                 pub_date = None
                 if hasattr(entry, 'published_parsed') and entry.published_parsed:
                     pub_date = datetime(*entry.published_parsed[:6]).isoformat() + "Z"
@@ -36,11 +34,9 @@ def fetch_rss_feed(feed_url):
                 else:
                     pub_date = datetime.utcnow().isoformat() + "Z"
                 
-                # 本文抽出
                 raw_text = getattr(entry, 'summary', '') or getattr(entry, 'description', '')
                 text = clean_text(raw_text)
                 
-                # 画像メディアURL抽出
                 media_url = None
                 if 'media_content' in entry and len(entry.media_content) > 0:
                     media_url = entry.media_content[0].get('url')
@@ -59,16 +55,15 @@ def fetch_rss_feed(feed_url):
                     "link": getattr(entry, 'link', '')
                 }
     except Exception as e:
-        print(f"Error fetching {feed_url}: {e}")
+        print(f"Fetch failed for {feed_url}: {e}")
     return None
 
 def fetch_latest_post(x_username, insta_username):
-    # 1. Instagram の取得試行 (複数のプロキシ・インスタンスを巡回)
+    # 1. Instagram の取得試行
     if insta_username:
         insta_urls = [
             f"https://rsshub.app/instagram/user/{insta_username}",
-            f"https://rsshub.rss3.io/instagram/user/{insta_username}",
-            f"https://rss.feeded.xyz/instagram/user/{insta_username}"
+            f"https://rsshub.rss3.io/instagram/user/{insta_username}"
         ]
         for url in insta_urls:
             post = fetch_rss_feed(url)
@@ -97,6 +92,17 @@ def main():
         print("participants.csv not found.")
         return
 
+    # 既存の feed.json があれば読み込んでバックアップ用データとして保持
+    existing_data = {}
+    if os.path.exists(output_path):
+        try:
+            with open(output_path, "r", encoding="utf-8") as f:
+                old_list = json.load(f)
+                for item in old_list:
+                    existing_data[item.get("bib")] = item
+        except Exception as e:
+            print(f"Failed to load existing feed.json: {e}")
+
     results = []
 
     with open(csv_path, mode='r', encoding='utf-8-sig') as f:
@@ -113,6 +119,12 @@ def main():
 
             print(f"Processing No.{bib} {name}...")
             post_data, platform = fetch_latest_post(x_user, insta_user)
+
+            # もし今回取得失敗し、過去に正常な投稿データがあった場合はそれを維持する
+            old_item = existing_data.get(bib, {})
+            if not post_data and old_item.get("latest_post"):
+                post_data = old_item["latest_post"]
+                platform = old_item.get("platform", "")
 
             item = {
                 "bib": bib,
