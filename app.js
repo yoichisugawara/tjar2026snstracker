@@ -3,56 +3,69 @@ document.addEventListener('DOMContentLoaded', async () => {
   const lastUpdateElem = document.getElementById('last-update');
 
   try {
-    const res = await fetch(`data/feed.json?t=${Date.now()}`);
-    if (!res.ok) throw new Error('データが見つかりません');
+    // キャッシュ回避用のタイムスタンプ付きで取得
+    const res = await fetch(`./data/feed.json?t=${Date.now()}`);
+    if (!res.ok) throw new Error(`HTTPエラー: ${res.status}`);
     const data = await res.json();
 
-    lastUpdateElem.textContent = `最終同期: ${new Date().toLocaleTimeString('ja-JP')} (最新順表示)`;
+    if (!data || data.length === 0) {
+      container.innerHTML = 'データが空です。';
+      return;
+    }
+
+    // 投稿日時（pub_date）が新しい順にソート（投稿がない選手は後ろへ）
+    data.sort((a, b) => {
+      const timeA = a.latest_post && a.latest_post.pub_date ? new Date(a.latest_post.pub_date).getTime() : 0;
+      const timeB = b.latest_post && b.latest_post.pub_date ? new Date(b.latest_post.pub_date).getTime() : 0;
+      return timeB - timeA; // 降順（新しいものが上）
+    });
+
+    lastUpdateElem.textContent = `最終同期: ${new Date().toLocaleTimeString('ja-JP')} (最新投稿順)`;
     container.innerHTML = '';
 
     data.forEach(item => {
       const card = document.createElement('div');
       card.className = 'card';
 
-      let postHtml = '<div class="post-box"><p class="post-text">直近の投稿データがありません</p></div>';
+      let postHtml = '直近の投稿データがありません';
       if (item.latest_post) {
         const timeStr = item.latest_post.pub_date ? new Date(item.latest_post.pub_date).toLocaleString('ja-JP') : '日時不明';
-        const imgHtml = item.latest_post.media_url ? `<img src="${item.latest_post.media_url}" class="post-media" loading="lazy">` : '';
+        const imgHtml = item.latest_post.media_url ? `` : '';
         postHtml = `
-          <div class="post-box">
-            <div class="post-header">
-              <span>⏱ ${timeStr}</span>
-              <span>via ${item.platform}</span>
-            </div>
-            <p class="post-text">${item.latest_post.text || '（画像または動画のみの投稿）'}</p>
+          
+            
+              ⏱ ${timeStr}
+              via ${item.platform}
+            
+            ${item.latest_post.text || '（画像または動画のみの投稿）'}
             ${imgHtml}
-          </div>
+          
         `;
       }
 
-      let btnGroup = '<div class="btn-group">';
-      if (item.x_username) btnGroup += `<a href="https://x.com/${item.x_username}" target="_blank" class="btn">Xを見る</a>`;
-      if (item.instagram_username) btnGroup += `<a href="https://instagram.com/${item.instagram_username}" target="_blank" class="btn">Instaを見る</a>`;
-      if (item.ibuki_url) btnGroup += `<a href="${item.ibuki_url}" target="_blank" class="btn ibuki">IBUKI GPS</a>`;
-      btnGroup += '</div>';
+      let btnGroup = '';
+      if (item.x_username) btnGroup += `Xを見る`;
+      if (item.instagram_username) btnGroup += `Instaを見る`;
+      if (item.ibuki_url) btnGroup += `IBUKI GPS`;
+      btnGroup += '';
 
       const avatar = item.avatar_url || 'https://via.placeholder.com/100?text=No+Img';
       const ageText = item.age ? ` (${item.age}歳)` : '';
 
       card.innerHTML = `
-        <div class="profile-header">
-          <img src="${avatar}" class="avatar" alt="${item.name}">
-          <div class="meta">
-            <div class="bib-name">No.${item.bib} ${item.name}${ageText}</div>
-            <div class="sub-info">${item.info || ''}</div>
-          </div>
-        </div>
+        
+          
+          
+            No.${item.bib} ${item.name}${ageText}
+            ${item.info || ''}
+          
+        
         ${postHtml}
         ${btnGroup}
       `;
       container.appendChild(card);
     });
   } catch (err) {
-    container.innerHTML = `<p style="color:red; text-align:center;">エラー: ${err.message}</p>`;
+    container.innerHTML = `読み込みエラー: ${err.message}data/feed.json が正しく出力されているか確認してください。`;
   }
 });
