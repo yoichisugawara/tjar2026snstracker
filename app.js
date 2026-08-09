@@ -83,10 +83,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           ${imgHtml}
         `;
       } else {
-        // データが取得できていない場合の表示
+        // latest_post が null の場合の表示
         postDiv.innerHTML = `
           <div style="color:#64748b; font-size:0.85rem; text-align:center; padding:4px 0;">
-            最新投稿データ未取得（下のボタンから直接確認）
+            最新投稿データ未取得（Instagramで確認）
           </div>
         `;
       }
@@ -94,16 +94,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // 4. ボタン部分
       const btnDiv = document.createElement('div');
-      btnDiv.style.cssText = 'display:flex; gap:8px;';
+      btnDiv.style.cssText = 'display:flex; gap:8px; flex-wrap:wrap;';
 
       if (item.x_username) {
-        btnDiv.innerHTML += `<a href="https://x.com/${item.x_username}" target="_blank" rel="noopener" style="flex:1; text-align:center; padding:10px 0; background:#000000; color:#ffffff; text-decoration:none; font-size:0.85rem; font-weight:bold; border-radius:6px; display:block;">Xを見る</a>`;
+        btnDiv.innerHTML += `<a href="https://x.com/${item.x_username}" target="_blank" rel="noopener" style="flex:1; min-width:120px; text-align:center; padding:10px 0; background:#000000; color:#ffffff; text-decoration:none; font-size:0.85rem; font-weight:bold; border-radius:6px; display:block;">Xを見る</a>`;
       }
       if (item.instagram_username) {
-        btnDiv.innerHTML += `<a href="https://instagram.com/${item.instagram_username}" target="_blank" rel="noopener" style="flex:1; text-align:center; padding:10px 0; background:#e1306c; color:#ffffff; text-decoration:none; font-size:0.85rem; font-weight:bold; border-radius:6px; display:block;">Instaを見る</a>`;
+        // @ユーザー名 を含めたテキストで表示
+        btnDiv.innerHTML += `<a href="https://instagram.com/${item.instagram_username}" target="_blank" rel="noopener" style="flex:1; min-width:120px; text-align:center; padding:10px 0; background:#e1306c; color:#ffffff; text-decoration:none; font-size:0.85rem; font-weight:bold; border-radius:6px; display:block;">Instaを見る (@${item.instagram_username})</a>`;
       }
       if (item.ibuki_url) {
-        btnDiv.innerHTML += `<a href="${item.ibuki_url}" target="_blank" rel="noopener" style="flex:1; text-align:center; padding:10px 0; background:#16a34a; color:#ffffff; text-decoration:none; font-size:0.85rem; font-weight:bold; border-radius:6px; display:block;">IBUKI GPS</a>`;
+        btnDiv.innerHTML += `<a href="${item.ibuki_url}" target="_blank" rel="noopener" style="flex:1; min-width:120px; text-align:center; padding:10px 0; background:#16a34a; color:#ffffff; text-decoration:none; font-size:0.85rem; font-weight:bold; border-radius:6px; display:block;">IBUKI GPS</a>`;
       }
       
       card.appendChild(btnDiv);
