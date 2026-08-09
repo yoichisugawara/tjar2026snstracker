@@ -18,7 +18,7 @@ def clean_text(html_text):
 
 def fetch_rss_feed(feed_url):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
     }
     try:
         resp = requests.get(feed_url, headers=headers, timeout=10)
@@ -47,7 +47,6 @@ def fetch_rss_feed(feed_url):
                 elif 'media_thumbnail' in entry and len(entry.media_thumbnail) > 0:
                     media_url = entry.media_thumbnail[0].get('url')
                 else:
-                    # 本文タグ内のimgタグを検索
                     soup = bs4.BeautifulSoup(raw_text, "html.parser")
                     img = soup.find('img')
                     if img and img.get('src'):
@@ -64,19 +63,24 @@ def fetch_rss_feed(feed_url):
     return None
 
 def fetch_latest_post(x_username, insta_username):
-    # 1. Instagram の取得試行 (RSSHub プロキシ経由)
+    # 1. Instagram の取得試行 (複数のプロキシ・インスタンスを巡回)
     if insta_username:
-        insta_url = f"https://rsshub.app/instagram/user/{insta_username}"
-        post = fetch_rss_feed(insta_url)
-        if post:
-            return post, "Instagram"
+        insta_urls = [
+            f"https://rsshub.app/instagram/user/{insta_username}",
+            f"https://rsshub.rss3.io/instagram/user/{insta_username}",
+            f"https://rss.feeded.xyz/instagram/user/{insta_username}"
+        ]
+        for url in insta_urls:
+            post = fetch_rss_feed(url)
+            if post:
+                return post, "Instagram"
 
-    # 2. X (Twitter) の取得試行 (Nitter / RSSHub 経由)
+    # 2. X (Twitter) の取得試行
     if x_username:
         x_rss_urls = [
             f"https://rsshub.app/twitter/user/{x_username}",
-            f"https://nitter.net/{x_username}/rss",
-            f"https://nitter.privacydev.net/{x_username}/rss"
+            f"https://nitter.privacydev.net/{x_username}/rss",
+            f"https://nitter.poast.org/{x_username}/rss"
         ]
         for url in x_rss_urls:
             post = fetch_rss_feed(url)
