@@ -16,7 +16,7 @@ def clean_text(html_text):
     return text
 
 def fetch_ibuki_status(ibuki_url):
-    """IBUKIのページ内埋め込みデータ(JSON)から最新ログ・現在地を抽出"""
+    """IBUKIの埋め込みデータから緯度・経度・標高・通過時間等を抽出"""
     if not ibuki_url:
         return None
     headers = {
@@ -27,32 +27,43 @@ def fetch_ibuki_status(ibuki_url):
         if resp.status_code == 200:
             soup = bs4.BeautifulSoup(resp.content, "html.parser")
             
-            # 1. Next.js などの埋め込みJSONデータ script(__NEXT_DATA__)を解析
+            # 1. Next.js 埋め込みデータ(__NEXT_DATA__)を優先解析
             next_data = soup.find('script', id='__NEXT_DATA__')
             if next_data and next_data.string:
                 try:
                     data = json.loads(next_data.string)
-                    # JSON構造からチェックポイントや最新ログの検索
-                    page_props = data.get('props', {}).get('pageProps', {})
-                    # プレイヤー・トラッカー情報
-                    runner = page_props.get('runner', {}) or page_props.get('track', {})
-                    if runner:
-                        last_point = runner.get('lastCheckpointName') or runner.get('currentLocationName')
-                        last_time = runner.get('lastPassedTime') or runner.get('updatedAt')
-                        if last_point:
-                            return f"{last_point}" + (f" ({last_time})" if last_time else "")
+                    props = data.get('props', {}).get('pageProps', {})
+                    
+                    # ログ情報オブジェクトの探索
+                    runner = props.get('runner') or props.get('track') or props.get('participant') or {}
+                    last_loc = runner.get('lastLocation') or runner.get('lastPoint') or {}
+                    
+                    lat = last_loc.get('latitude') or last_loc.get('lat')
+                    lng = last_loc.get('longitude') or last_loc.get('lng')
+                    alt = last_loc.get('altitude') or last_loc.get('alt')
+                    dist = runner.get('distance') or runner.get('distanceKm') or last_loc.get('distance')
+                    point_name = runner.get('lastCheckpointName') or runner.get('currentLocationName')
+                    
+                    status_parts = []
+                    if point_name:
+                        status_parts.append(f"地点: {point_name}")
+                    if dist:
+                        status_parts.append(f"{round(float(dist), 1)}km地点")
+                    if lat and lng:
+                        status_parts.append(f"({round(float(lat), 4)}, {round(float(lng), 4)})")
+                    if alt:
+                        status_parts.append(f"標高: {int(alt)}m")
+                        
+                    if status_parts:
+                        return " / ".join(status_parts)
                 except Exception as je:
                     print(f"JSON parse error for IBUKI: {je}")
 
-            # 2. JSON解析が外れた場合のバックアップ処理（特定メタデータ・タグ検索）
-            og_title = soup.find("meta", property="og:title")
-            if og_title and og_title.get("content"):
-                title_content = og_title["content"].strip()
-                # タイトルに含まれる「〇〇 - IBUKI」などの形式から抽出
-                if " - " in title_content:
-                    parts = title_content.split(" - ")
-                    if len(parts) > 1 and "IBUKI" not in parts[0]:
-                        return parts[0].strip()
+            # 2. バックアップ解析 (HTML要素から緯度・経度パターンを検索)
+            text_content = soup.get_text()
+            coords = re.search(r'(\d{2}\.\d+)\s*,\s*(\d{13,3}\.\d+)', text_content)
+            if coords:
+                return f"座標: {coords.group(1)}, {coords.group(2)}"
 
     except Exception as e:
         print(f"IBUKI fetch failed for {ibuki_url}: {e}")
